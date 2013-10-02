@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "prog2.h"
+
 /* ******************************************************************
  ALTERNATING BIT AND GO-BACK-N NETWORK EMULATOR: VERSION 1.1  J.F.Kurose
 
@@ -17,31 +19,31 @@
 
 #define BIDIRECTIONAL 0    /* change to 1 if you're doing extra credit */
                            /* and write a routine called B_output */
+                           
+/** The message window that A will use */
+struct message_window awindow;
 
-/* a "msg" is the data unit passed from layer 5 (teachers code) to layer  */
-/* 4 (students' code).  It contains the data (characters) to be delivered */
-/* to layer 5 via the students transport level protocol entities.         */
-struct msg {
-  char data[20];
-  };
-
-/* a packet is the data unit passed from layer 4 (students code) to layer */
-/* 3 (teachers code).  Note the pre-defined packet structure, which all   */
-/* students must follow. */
-struct pkt {
-   int seqnum;  // seq number (if ack/nak, this is the number)
-   int acknum;  // 1 is ack, -1 is nak, 0 is niether
-   int checksum;
-   char payload[20];
-    };
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
-/* called from layer 5, passed the data to be sent to other side */
+/* Called from Application layer, sends the given message to node B*/
 A_output(message)
   struct msg message;
 {
-  
+	//check if we have any outstanding packets, if we do, we drop the msg
+	if (!a_window.num_outstanding) {
+		//no outstanding packets, good to send
+		//lets create the packet for the message
+		struct pkt* packet = (struct pkt*) malloc (sizeof struct pkt);
+		pkt->seqnum = a_window.next_seq_num; // the next seq num
+		window_inc_seq_num(&a_window); // increase the seq num
+		pkt->acknum = 0; //no ack status
+		//we need to generate a checksum.
+		strncpy(pkt->payload, a_window.data, 20); //copy over the data
+	}
+	else {
+		printf("A_OUT, we have an outstanding msg, droping new data \n");
+	}
 }
 
 /* need be completed only for extra credit (ignore for this project) */
@@ -51,41 +53,47 @@ B_output(message)
   
 }
 
-/* called from layer 3, when a packet arrives for layer 4 */
+/* Called from the Network Layer when node A receives a message,
+	From Node B in this case 
+	@param packet The packet received from the network
+*/
 A_input(packet)
   struct pkt packet;
 {
   
 }
 
-/* called when A's timer goes off */
+/* Interupt for A's timer */
 A_timerinterrupt()
 {
   
 }  
 
-/* the following routine will be called once (only) before any other */
-/* entity A routines are called. You can use it to do any initialization */
+/* Initialize A  */
 A_init()
 {
-  
+  a_window.next_seq_num = 0;
+  a_window.num_outstanding = 0;
+  a_window_size = A_WINDOW_SIZE
 }
 
-/* called from layer 3, when a packet arrives for layer 4 at B*/
+/* Called from Network Layer when node B receives a packet,
+	From node A in this case 
+	@param packet The packet received from the network
+*/
 B_input(packet)
   struct pkt packet;
 {
-  
+	printf("B recieved a message! \n");
 }
 
-/* called when B's timer goes off */
+/* Interupt for B's timer */
 B_timerinterrupt()
 {
   
 }
 
-/* the following rouytine will be called once (only) before any other */
-/* entity B routines are called. You can use it to do any initialization */
+/* Initizlize B */
 B_init()
 {
   
@@ -283,7 +291,6 @@ generate_next_arrival()
 {
    double x,log(),ceil();
    struct event *evptr;
-    char *malloc();
    float ttime;
    int tempint;
 
@@ -394,7 +401,6 @@ float increment;
 
  struct event *q;
  struct event *evptr;
- char *malloc();
 
  if (TRACE>2)
     printf("          START TIMER: starting timer at %f\n",time);
@@ -422,7 +428,6 @@ struct pkt packet;
 {
  struct pkt *mypktptr;
  struct event *evptr,*q;
- char *malloc();
  float lastime, x, jimsrand();
  int i;
 
