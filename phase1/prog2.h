@@ -8,6 +8,9 @@
 #define A_ID (0)
 #define B_ID (1)
 
+/** Constant for ACK */
+#define ACK_ID (1)
+
 /* a "msg" is the data unit passed from layer 5 (teachers code) to layer  */
 /* 4 (students' code).  It contains the data (characters) to be delivered */
 /* to layer 5 via the students transport level protocol entities.         */
@@ -49,5 +52,13 @@ void window_inc_seq_num(struct message_window* window);
 */
 
 int generate_checksum(struct pkt* packet);
+
+
+/** Creates an ack packet for the given sequence number */
+struct pkt* create_ack(int seq_num);
+
+/** Creates a nack packet for the given sequence number */
+
+struct pkt* create_nack(int seq_num);
 
 #endif

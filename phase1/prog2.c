@@ -24,6 +24,10 @@
 /** The message window that A will use */
 struct message_window a_window;
 
+/** The message window that B will use */
+struct message_window b_window;
+
+
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
@@ -47,6 +51,9 @@ A_output(message)
 		//lets actualy send the packet
 		tolayer3(A_ID, *packet);
 		a_window.num_outstanding++; // add an outstanding packet
+		
+		//free the packet
+		free(packet);
 	}
 	else {
 		printf("A_OUT, we have an outstanding msg, droping new data \n");
@@ -92,9 +99,19 @@ B_input(packet)
   struct pkt packet;
 {
 	printf("B recieved a message! \n");
+	//check if the packet is valid
+
 	int checksum = generate_checksum(&packet);
 	if (checksum == packet.checksum) {
 		printf("Checksums match! No corruption! \n");
+		if (b_window.next_seq_num == packet.seqnum) {
+			//we got the packet we were expecting, and it was uncorrupt
+			struct pkt* ack_pkt = create_ack(packet.seqnum);
+			tolayer3(B_ID, *ack_pkt);
+			free(ack_pkt);
+		}
+		
+		
 	}
 	else {
 		printf("PACKETS WERE CORRUPT OMGGES \n");
@@ -110,7 +127,7 @@ B_timerinterrupt()
 /* Initizlize B */
 B_init()
 {
-  
+  b_window.window_size = A_WINDOW_SIZE;
 }
 
 
@@ -136,6 +153,16 @@ int generate_checksum(struct pkt* packet) {
 	
 	return checksum;
 }
+
+
+struct pkt* create_ack(int seq_num) {
+	struct pkt* packet = (struct pkt*) malloc(sizeof(struct pkt));
+	packet->seqnum = seq_num;
+	packet->acknum = ACK_ID;
+	return packet;	
+}
+
+
 
 /*****************************************************************
 ***************** NETWORK EMULATION CODE STARTS BELOW ***********
