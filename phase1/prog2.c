@@ -25,7 +25,7 @@
 struct message_window a_window;
 
 /** The message window that B will use */
-struct message_window b_window;
+struct receiver_window b_window;
 
 int b_recv;
 
@@ -87,7 +87,7 @@ A_input(packet)
 			if (packet.seqnum == a_window.next_seq_num) {
 				printf("Packed is acking outstanding packet \n");
 				//we acked the outstanding packet
-				window_inc_seq_num(&a_window); //increase the sequence number
+				msg_window_inc_seq_num(&a_window); //increase the sequence number
 				a_window.num_outstanding = 0; // no more outstanding packets
 				free(a_window.outstanding_packets[0]); // free up the packet now that its not needed
 				a_window.outstanding_packets[0] = NULL;
@@ -132,21 +132,23 @@ B_input(packet)
 	//check if the packet is valid
 	if (check_packet(&packet)) {
 		printf("Checksums match! No corruption! \n");
-		printf("B next seq %d pkt seq %d \n", b_window.next_seq_num,packet.seqnum);
-		if (b_window.next_seq_num == packet.seqnum) {
+		printf("B next seq %d pkt seq %d \n", b_window.expected_seq_num,packet.seqnum);
+		if (b_window.expected_seq_num == packet.seqnum) {
 			//we got the packet we were expecting, and it was uncorrupt
+			
+			free(b_window.last_ack);
 			struct pkt* ack_pkt = create_ack(packet.seqnum);
+			b_window.last_ack = ack_pkt;
 			tolayer3(B_ID, *ack_pkt);
-			free(ack_pkt);
 			
-			window_inc_seq_num(&b_window);
+			recv_window_inc_seq_num(&b_window);
 			
-			b_recv++;
+			b_window.num_recv++;
 			printf("B successfully received %d packets \n", b_recv);
 		}
 		else {
-			//we want to resent the last ack
-			//CREATE A REV FUNC
+			printf("Resending ack! \n");
+			tolayer3(B_ID, &(b_window.last_ack));
 		}
 		
 	}
@@ -164,20 +166,29 @@ B_timerinterrupt()
 /* Initizlize B */
 B_init()
 {
-  b_window.window_size = A_WINDOW_SIZE;
-  b_recv = 0;
+	b_window.expected_seq_num = 0;
+	b_window.last_ack = NULL;
+	b_window.num_recv = 0;
 }
 
 
 /** MY FUNCTIONS */
 
-void window_inc_seq_num(struct message_window* window) {
+void msg_window_inc_seq_num(struct message_window* window) {
 	window->next_seq_num ++;
 	//will work for alt bit, might need to change when using GoBackN
 	if (window->next_seq_num > A_WINDOW_SIZE) {
 		window->next_seq_num = 0;
 	}
 	//printf("Incremented seq num, now %d \n", window->next_seq_num);
+}
+
+void recv_window_inc_seq_num(struct receiver_window* window) {
+	window->expected_seq_num ++;
+	//will work for alt bit, might need to change when using GoBackN
+	if (window->expected_seq_num > A_WINDOW_SIZE) {
+		window->expected_seq_num = 0;
+	}
 }
 
 int generate_checksum(struct pkt* packet) {

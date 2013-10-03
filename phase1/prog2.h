@@ -41,12 +41,26 @@ struct message_window {
 	struct pkt* outstanding_packets[A_WINDOW_SIZE];	
 };	
 
+struct receiver_window {
+	int expected_seq_num; // the seq num we are expecting.
+	struct pkt* last_ack; // pointer to the last ack message sent.
+	
+	int num_recv; // number of pkts succesfuly rcvd
+};
+
 /** Increments the seq number for the given message window, in this case alternated
 	between 0 and 1
 	@param window Pointer to the message window to increase the seq number in
 */
 
-void window_inc_seq_num(struct message_window* window);
+void msg_window_inc_seq_num(struct message_window* window);
+
+/** Increments the seq number for the given receiver window, in this case alternated
+	between 0 and 1
+	@param window Pointer to the message window to increase the seq number in
+*/
+
+void recv_window_inc_seq_num(struct receiver_window* window);
 
 /** Creates a checksum for the given packet
 	@param packet Pointer to the packet to create the checksum for
