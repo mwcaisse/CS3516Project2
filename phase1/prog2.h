@@ -4,6 +4,10 @@
 /** The size of the window that A will use, alt bit so 1 */
 #define A_WINDOW_SIZE (1)
 
+/** IDs for each node */
+#define A_ID (0)
+#define B_ID (1)
+
 /* a "msg" is the data unit passed from layer 5 (teachers code) to layer  */
 /* 4 (students' code).  It contains the data (characters) to be delivered */
 /* to layer 5 via the students transport level protocol entities.         */
@@ -32,7 +36,18 @@ struct message_window {
 	struct msg outstanding_msg[A_WINDOW_SIZE];	
 };	
 
+/** Increments the seq number for the given message window, in this case alternated
+	between 0 and 1
+	@param window Pointer to the message window to increase the seq number in
+*/
 
 void window_inc_seq_num(struct message_window* window);
+
+/** Creates a checksum for the given packet
+	@param packet Pointer to the packet to create the checksum for
+	@return The integer checksum value
+*/
+
+int generate_checksum(struct pkt* packet);
 
 #endif

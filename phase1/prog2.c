@@ -41,6 +41,12 @@ A_output(message)
 		packet->acknum = 0; //no ack status
 		//we need to generate a checksum.
 		strncpy(packet->payload, message.data, 20); //copy over the data
+		
+		packet->checksum = generate_checksum(packet);
+		
+		//lets actualy send the packet
+		tolayer3(A_ID, *packet);
+		a_window.num_outstanding++; // add an outstanding packet
 	}
 	else {
 		printf("A_OUT, we have an outstanding msg, droping new data \n");
@@ -86,6 +92,13 @@ B_input(packet)
   struct pkt packet;
 {
 	printf("B recieved a message! \n");
+	int checksum = generate_checksum(&packet);
+	if (checksum == packet.checksum) {
+		printf("Checksums match! No corruption! \n");
+	}
+	else {
+		printf("PACKETS WERE CORRUPT OMGGES \n");
+	}
 }
 
 /* Interupt for B's timer */
@@ -109,6 +122,19 @@ void window_inc_seq_num(struct message_window* window) {
 	if (window->next_seq_num > A_WINDOW_SIZE) {
 		window->next_seq_num = 0;
 	}
+	printf("Incremented seq num, now %d \n", window->next_seq_num);
+}
+
+int generate_checksum(struct pkt* packet) {
+	int checksum = 0;
+	checksum += packet->seqnum;
+	checksum += packet->acknum;
+	int i=0;
+	for (i=0;i<20;i++) {
+		checksum += (int) packet->payload[i];
+	}
+	
+	return checksum;
 }
 
 /*****************************************************************
