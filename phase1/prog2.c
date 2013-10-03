@@ -78,9 +78,11 @@ A_input(packet)
 	//printf("A received a packet! \n");
   //we received a packet!
 	if (check_packet(&packet)) {
-		//printf("Packed is valid \n");
+		//printf("A rcv'd valie packet  outstanding: %d acknum: %d\n", a_window.num_outstanding, packet.acknum);
 		///check if this is an ack, and if there are outstanding packets
 		if (packet.acknum == ACK_ID && a_window.num_outstanding) {
+		
+			//printf("received ack for %d \n", packet.seqnum);
 			//printf("Packet is an ack \n");
 			//if the packet was an ack,
 			//check if it is an ack for the outstanding packet
@@ -131,8 +133,8 @@ B_input(packet)
 	printf("B recieved a message! \n");
 	//check if the packet is valid
 	if (check_packet(&packet)) {
-		printf("Checksums match! No corruption! \n");
-		printf("B next seq %d pkt seq %d \n", b_window.expected_seq_num,packet.seqnum);
+		//printf("Checksums match! No corruption! \n");
+		//printf("B next seq %d pkt seq %d \n", b_window.expected_seq_num,packet.seqnum);
 		if (b_window.expected_seq_num == packet.seqnum) {
 			//we got the packet we were expecting, and it was uncorrupt
 			
@@ -144,16 +146,16 @@ B_input(packet)
 			recv_window_inc_seq_num(&b_window);
 			
 			b_window.num_recv++;
-			printf("B successfully received %d packets \n", b_recv);
+			printf("B successfully received %d packets \n", b_window.num_recv);
 		}
 		else {
-			printf("Resending ack! \n");
-			tolayer3(B_ID, &(b_window.last_ack));
+			//printf("Resending ack! \n");
+			tolayer3(B_ID, *(b_window.last_ack));
 		}
 		
 	}
 	else {
-		printf("PACKETS WERE CORRUPT OMGGES \n");
+		printf("B recieved a corrupt packet \n");
 	}
 }
 
