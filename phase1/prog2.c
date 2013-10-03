@@ -27,6 +27,7 @@ struct message_window a_window;
 /** The message window that B will use */
 struct message_window b_window;
 
+int b_recv;
 
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
@@ -41,7 +42,6 @@ A_output(message)
 		//lets create the packet for the message
 		struct pkt* packet = (struct pkt*) malloc (sizeof(struct pkt));
 		packet->seqnum = a_window.next_seq_num; // the next seq num
-		window_inc_seq_num(&a_window); // increase the seq num
 		packet->acknum = 0; //no ack status
 		//we need to generate a checksum.
 		strncpy(packet->payload, message.data, 20); //copy over the data
@@ -50,10 +50,11 @@ A_output(message)
 		
 		//lets actualy send the packet
 		tolayer3(A_ID, *packet);
-		a_window.num_outstanding++; // add an outstanding packet
+		a_window.outstanding_packets[a_window.num_outstanding] = packet;
+		a_window.num_outstanding++; // add an outstanding packet	
+		//start the timer	
+		starttimer(A_ID, A_TIMEOUT);
 		
-		//free the packet
-		free(packet);
 	}
 	else {
 		printf("A_OUT, we have an outstanding msg, droping new data \n");
@@ -74,13 +75,42 @@ B_output(message)
 A_input(packet)
   struct pkt packet;
 {
-  
+	//printf("A received a packet! \n");
+  //we received a packet!
+	if (check_packet(&packet)) {
+		//printf("Packed is valid \n");
+		///check if this is an ack, and if there are outstanding packets
+		if (packet.acknum == ACK_ID && a_window.num_outstanding) {
+			//printf("Packet is an ack \n");
+			//if the packet was an ack,
+			//check if it is an ack for the outstanding packet
+			if (packet.seqnum == a_window.next_seq_num) {
+				printf("Packed is acking outstanding packet \n");
+				//we acked the outstanding packet
+				window_inc_seq_num(&a_window); //increase the sequence number
+				a_window.num_outstanding = 0; // no more outstanding packets
+				free(a_window.outstanding_packets[0]); // free up the packet now that its not needed
+				a_window.outstanding_packets[0] = NULL;
+				stoptimer(A_ID);
+			}
+		}
+	}
+	else {
+		//we received a corrupt packet, just ignore it
+	}
 }
 
 /* Interupt for A's timer */
 A_timerinterrupt()
 {
-  
+	if (a_window.num_outstanding) {
+		tolayer3(*a_window.outstanding_packets[0]);
+		starttimer(A_ID, A_TIMEOUT);
+		//resend the packet when the timer goes off
+	}
+	else {
+		//this shouldn't ever be reached.
+	}
 }  
 
 /* Initialize A  */
@@ -100,17 +130,24 @@ B_input(packet)
 {
 	printf("B recieved a message! \n");
 	//check if the packet is valid
-
-	int checksum = generate_checksum(&packet);
-	if (checksum == packet.checksum) {
+	if (check_packet(&packet)) {
 		printf("Checksums match! No corruption! \n");
+		printf("B next seq %d pkt seq %d \n", b_window.next_seq_num,packet.seqnum);
 		if (b_window.next_seq_num == packet.seqnum) {
 			//we got the packet we were expecting, and it was uncorrupt
 			struct pkt* ack_pkt = create_ack(packet.seqnum);
 			tolayer3(B_ID, *ack_pkt);
 			free(ack_pkt);
+			
+			window_inc_seq_num(&b_window);
+			
+			b_recv++;
+			printf("B successfully received %d packets \n", b_recv);
 		}
-		
+		else {
+			//we want to resent the last ack
+			//CREATE A REV FUNC
+		}
 		
 	}
 	else {
@@ -128,6 +165,7 @@ B_timerinterrupt()
 B_init()
 {
   b_window.window_size = A_WINDOW_SIZE;
+  b_recv = 0;
 }
 
 
@@ -139,7 +177,7 @@ void window_inc_seq_num(struct message_window* window) {
 	if (window->next_seq_num > A_WINDOW_SIZE) {
 		window->next_seq_num = 0;
 	}
-	printf("Incremented seq num, now %d \n", window->next_seq_num);
+	//printf("Incremented seq num, now %d \n", window->next_seq_num);
 }
 
 int generate_checksum(struct pkt* packet) {
@@ -154,11 +192,19 @@ int generate_checksum(struct pkt* packet) {
 	return checksum;
 }
 
+int check_packet(struct pkt* packet) {
+	int res = 0;
+	int checksum = generate_checksum(packet);
+	return checksum == packet->checksum;
+}
+
 
 struct pkt* create_ack(int seq_num) {
 	struct pkt* packet = (struct pkt*) malloc(sizeof(struct pkt));
+	memset(packet, 0, sizeof(struct pkt)); //zero out the struct
 	packet->seqnum = seq_num;
 	packet->acknum = ACK_ID;
+	packet->checksum = generate_checksum(packet);
 	return packet;	
 }
 

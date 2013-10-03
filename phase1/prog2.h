@@ -11,6 +11,8 @@
 /** Constant for ACK */
 #define ACK_ID (1)
 
+#define A_TIMEOUT (50.0f)
+
 /* a "msg" is the data unit passed from layer 5 (teachers code) to layer  */
 /* 4 (students' code).  It contains the data (characters) to be delivered */
 /* to layer 5 via the students transport level protocol entities.         */
@@ -27,7 +29,7 @@ struct pkt {
    int acknum;  // 1 is ack, -1 is nak, 0 is niether
    int checksum;
    char payload[20];
-    };
+};
 
 /** The message window that will be used by A, keeps track
 	of the unack'd packets 
@@ -36,7 +38,7 @@ struct message_window {
 	int next_seq_num;	
 	int num_outstanding;	
 	int window_size;	
-	struct msg outstanding_msg[A_WINDOW_SIZE];	
+	struct pkt* outstanding_packets[A_WINDOW_SIZE];	
 };	
 
 /** Increments the seq number for the given message window, in this case alternated
@@ -52,6 +54,13 @@ void window_inc_seq_num(struct message_window* window);
 */
 
 int generate_checksum(struct pkt* packet);
+
+/** Checks if the packet's checksums match
+	@param packet Pointer to the packet to check
+	@return 1 if they match, 0 otherwise
+*/
+
+int check_packet(struct pkt* packet);
 
 
 /** Creates an ack packet for the given sequence number */
