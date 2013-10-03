@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "prog2.h"
 
@@ -21,7 +22,7 @@
                            /* and write a routine called B_output */
                            
 /** The message window that A will use */
-struct message_window awindow;
+struct message_window a_window;
 
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
@@ -34,12 +35,12 @@ A_output(message)
 	if (!a_window.num_outstanding) {
 		//no outstanding packets, good to send
 		//lets create the packet for the message
-		struct pkt* packet = (struct pkt*) malloc (sizeof struct pkt);
-		pkt->seqnum = a_window.next_seq_num; // the next seq num
+		struct pkt* packet = (struct pkt*) malloc (sizeof(struct pkt));
+		packet->seqnum = a_window.next_seq_num; // the next seq num
 		window_inc_seq_num(&a_window); // increase the seq num
-		pkt->acknum = 0; //no ack status
+		packet->acknum = 0; //no ack status
 		//we need to generate a checksum.
-		strncpy(pkt->payload, a_window.data, 20); //copy over the data
+		strncpy(packet->payload, message.data, 20); //copy over the data
 	}
 	else {
 		printf("A_OUT, we have an outstanding msg, droping new data \n");
@@ -74,7 +75,7 @@ A_init()
 {
   a_window.next_seq_num = 0;
   a_window.num_outstanding = 0;
-  a_window_size = A_WINDOW_SIZE
+  a_window.window_size = A_WINDOW_SIZE;
 }
 
 /* Called from Network Layer when node B receives a packet,
@@ -99,6 +100,16 @@ B_init()
   
 }
 
+
+/** MY FUNCTIONS */
+
+void window_inc_seq_num(struct message_window* window) {
+	window->next_seq_num ++;
+	//will work for alt bit, might need to change when using GoBackN
+	if (window->next_seq_num > A_WINDOW_SIZE) {
+		window->next_seq_num = 0;
+	}
+}
 
 /*****************************************************************
 ***************** NETWORK EMULATION CODE STARTS BELOW ***********

@@ -30,15 +30,9 @@ struct message_window {
 	int num_outstanding;	
 	int window_size;	
 	struct msg outstanding_msg[A_WINDOW_SIZE];	
-}	
+};	
 
 
-void window_inc_seq_num(struct message_window* window) {
-	window->next_seq_num ++;
-	//will work for alt bit, might need to change when using GoBackN
-	if (window->next_seq_num > A_WINDOW_SIZE) {
-		window->next_seq_num = 0;
-	}
-}
+void window_inc_seq_num(struct message_window* window);
 
 #endif
