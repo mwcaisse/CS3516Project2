@@ -80,18 +80,23 @@ A_input(packet)
 		//it wasn't corrupt, check if it is an ACK
 		if (packet.acknum == ACK_ID && list_size(a_window.unacked_packets) > 0) {	
 			printf("A received an ACK from B \n");	
+			//seg fault sometime after this.
 			//the packet is an ack, and there are unacked packets.
 			int ack_seq_num = packet.seqnum;
 			
 			int i=0;
+			printf("We are going to go through the list of unacked packets \n");
 			for (i=0;i<list_size(a_window.unacked_packets);i++) {
 				struct pkt* elt = peek(a_window.unacked_packets); // peek at the first unacked packet
+				printf("We found an unacked packet! %x\n", elt);
 				if (elt->seqnum <= ack_seq_num) {
+					printf("Packets seq num is less than ack seq num, removing from window \n");
 					//packet has been acked!
 					dequeue(a_window.unacked_packets); //remove it.
 					free(elt); // free the element now that we are done with it
 				}
 				else {
+					printf("Seq number is higher, no packets to ack. \n");
 					//seq number is not less than packet.
 					break;
 				}
@@ -117,6 +122,7 @@ A_input(packet)
 	}
 	else {
 		//we received a corrupt packet, just ignore it
+		printf("A received a corrupt packet \n");
 	}
 }
 
@@ -129,9 +135,16 @@ A_timerinterrupt()
 		//resend all unacked packets..
 		printf("We have unacked packets, lets resend them \n");
 		void** tmp_head = a_window.unacked_packets->head;
-		while (tmp_head < a_window.unacked_packets->tail) {
+		while (tmp_head < a_window.unacked_packets->tail) { //of course no wrap around -.-
+			printf("A is sending unacked packet to B \n");
 			tolayer3(A_ID, *((struct pkt*) *tmp_head));
 			tmp_head++;
+			if (tmp_head > 
+				(a_window.unacked_packets->values + a_window.unacked_packets->max_size)) {
+
+				//lalala wrap around 
+				tmp_head = a_window.unacked_packets->values;	
+			}
 		}
 		
 		starttimer(A_ID, A_TIMEOUT);
@@ -300,6 +313,11 @@ void* dequeue(struct list* list) {
 	if (list->curr_size > 0) {	//if the list is not empty
 		val = *(list->head);
 		list->head++;
+		
+		if (list->head >= (list->values + list->max_size)) {
+			//wrap the head around
+			list->head = list->values;
+		}
 		
 		list->curr_size--; //decrease the current size
 	}

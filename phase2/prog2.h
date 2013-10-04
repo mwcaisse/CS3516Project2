@@ -106,6 +106,11 @@ int add_to_list(struct list* list, void* value);
 
 int list_full(struct list* list);
 
+/** Returns an array containing all of the elements in the list,
+	@param list pointer to the list to return the elements from
+*/
+void** list_get_all(struct list* list);
+
 /** Increments the seq number for the given message window, in this case alternated
 	between 0 and 1
 	@param window Pointer to the message window to increase the seq number in
