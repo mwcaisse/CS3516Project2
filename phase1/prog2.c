@@ -138,7 +138,9 @@ B_input(packet)
 		if (b_window.expected_seq_num == packet.seqnum) {
 			//we got the packet we were expecting, and it was uncorrupt
 			
-			free(b_window.last_ack);
+			if (b_window.last_ack != NULL) {
+				free(b_window.last_ack);
+			}
 			struct pkt* ack_pkt = create_ack(packet.seqnum);
 			b_window.last_ack = ack_pkt;
 			tolayer3(B_ID, *ack_pkt);

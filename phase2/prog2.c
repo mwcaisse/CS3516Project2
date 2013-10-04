@@ -44,6 +44,7 @@ A_output(message)
 			printf("Droping a message, buffer full \n");
 		}
 		else {
+			printf("Window is full, adding to message buffer \n");
 			struct msg* message_ptr = (struct msg*) malloc(sizeof(struct msg));
 			memcpy(message_ptr, &message, sizeof(struct msg));
 			add_to_list(a_window.buffered_messages,message_ptr);
@@ -54,6 +55,7 @@ A_output(message)
 	else {
 		//we hae less than 8 outstanding packets
 		//send the message	
+		printf("A window is not full, sending a message \n");
 		send_message(&message);		
 	}
 }
@@ -72,10 +74,12 @@ B_output(message)
 A_input(packet)
   struct pkt packet;
 {
+	printf("A has received a pcket, lets check if it is valid and an ACK \n");
 	//check if the packet is not corrupt
 	if (check_packet(&packet)) {
 		//it wasn't corrupt, check if it is an ACK
-		if (packet.acknum == ACK_ID && list_size(a_window.unacked_packets) > 0) {		
+		if (packet.acknum == ACK_ID && list_size(a_window.unacked_packets) > 0) {	
+			printf("A received an ACK from B \n");	
 			//the packet is an ack, and there are unacked packets.
 			int ack_seq_num = packet.seqnum;
 			
@@ -93,11 +97,15 @@ A_input(packet)
 				}
 			}
 			
+			printf("Acknowledged %d packets \n", i);
+			
 			if (list_size(a_window.unacked_packets) == 0) {
 				//no unacked packets left, stopping timer
+				printf("Ack'd all packets, stoping timer \n");
 				stoptimer(A_ID);
 			}
 			
+			printf("Sending any messages in the buffer, that fit in window \n");
 			while (!list_full(a_window.unacked_packets)&& list_size(a_window.buffered_messages) > 0) {
 				//while we have free space in the window, and unbuffered messages
 				struct msg* message = dequeue(a_window.buffered_messages);
@@ -115,10 +123,11 @@ A_input(packet)
 /* Interupt for A's timer */
 A_timerinterrupt()
 {
-
+	printf("A Timer Interupt \n");
 	//when the timer goes off we resend all unacked packets.
 	if (list_size(a_window.unacked_packets) > 0) {
 		//resend all unacked packets..
+		printf("We have unacked packets, lets resend them \n");
 		void** tmp_head = a_window.unacked_packets->head;
 		while (tmp_head < a_window.unacked_packets->tail) {
 			tolayer3(A_ID, *((struct pkt*) *tmp_head));
@@ -126,6 +135,9 @@ A_timerinterrupt()
 		}
 		
 		starttimer(A_ID, A_TIMEOUT);
+	}
+	else {
+		printf("All packets were already ack'd lets do nothing. \n");
 	}
 }  
 
@@ -150,12 +162,16 @@ B_input(packet)
 	if (check_packet(&packet)) {
 		//printf("Checksums match! No corruption! \n");
 		//printf("B next seq %d pkt seq %d \n", b_window.expected_seq_num,packet.seqnum);
+		printf("Received packet %d expecting %d \n", packet.seqnum, b_window.expected_seq_num);
 		if (b_window.expected_seq_num == packet.seqnum) {
 			//we got the packet we were expecting, and it was uncorrupt
 			
-			free(b_window.last_ack);
+			if (b_window.last_ack != NULL) {
+				free(b_window.last_ack);
+			}
 			struct pkt* ack_pkt = create_ack(packet.seqnum);
 			b_window.last_ack = ack_pkt;
+			printf("Sending ACK \n");
 			tolayer3(B_ID, *ack_pkt);
 			
 			recv_window_inc_seq_num(&b_window);
@@ -165,12 +181,18 @@ B_input(packet)
 		}
 		else {
 			//printf("Resending ack! \n");
+			printf("Sending last ACK\n");
 			tolayer3(B_ID, *(b_window.last_ack));
 		}
 		
 	}
 	else {
 		printf("B recieved a corrupt packet \n");
+		//lets resend last ack anyways.
+		if (b_window.last_ack != NULL) {
+			printf("Sending last ACK \n");
+			tolayer3(B_ID, *(b_window.last_ack));
+		}
 	}
 }
 
@@ -244,6 +266,7 @@ int add_to_list(struct list* list, void* value) {
 	if (!list_full(list)) {
 		*(list->tail) = value;
 		list->tail++; // increase the tail
+		list->curr_size++;
 		if (list->tail >= (list->values + list->max_size)) {
 			//wrap the list around
 			list->tail = list->values;
@@ -277,13 +300,16 @@ void* dequeue(struct list* list) {
 	if (list->curr_size > 0) {	//if the list is not empty
 		val = *(list->head);
 		list->head++;
+		
+		list->curr_size--; //decrease the current size
 	}
 	return val;
 }
 void send_message(struct msg* message) {
-
+	
 	struct pkt* packet = (struct pkt*) malloc (sizeof(struct pkt));
 	packet->seqnum = a_window.next_seq_num; // the next seq num
+	msg_window_inc_seq_num(&a_window);
 	packet->acknum = 0; //no ack status
 	strncpy(packet->payload, message->data, 20); //copy over the data		
 	//we need to generate a checksum.
