@@ -134,18 +134,17 @@ A_timerinterrupt()
 	if (list_size(a_window.unacked_packets) > 0) {
 		//resend all unacked packets..
 		printf("We have unacked packets, lets resend them \n");
-		void** tmp_head = a_window.unacked_packets->head;
-		while (tmp_head < a_window.unacked_packets->tail) { //of course no wrap around -.-
+		
+		void** list_elt = list_get_all(a_window.unacked_packets);
+		void** list_head = list_elt;
+		int i;
+		for (i=0;i<list_size(a_window.unacked_packets);i++) {
 			printf("A is sending unacked packet to B \n");
-			tolayer3(A_ID, *((struct pkt*) *tmp_head));
-			tmp_head++;
-			if (tmp_head > 
-				(a_window.unacked_packets->values + a_window.unacked_packets->max_size)) {
-
-				//lalala wrap around 
-				tmp_head = a_window.unacked_packets->values;	
-			}
+			tolayer3(A_ID, *((struct pkt*) *list_head));
+			list_head++;
 		}
+		
+		free(list_elt); // free the array returned from list_get_all
 		
 		starttimer(A_ID, A_TIMEOUT);
 	}
@@ -285,6 +284,27 @@ int add_to_list(struct list* list, void* value) {
 			list->tail = list->values;
 		}
 	}
+}
+
+void** list_get_all(struct list* list) {
+	if (list->curr_size == 0) {
+		return NULL; // no elements exist in the list
+	}
+	void** values = (void**) malloc ( sizeof(void*) * list->curr_size);
+	void** values_tmp = values;
+	void** head_tmp = list->head;
+	int i=0;
+	for (i=0;i<list->curr_size;i++) {
+		*(values_tmp) = *(head_tmp);
+		values_tmp++;
+		head_tmp++;
+		if (head_tmp>= (list->values + list->max_size)) {
+			//wrap the head around
+			head_tmp = list->values;
+		}
+	}
+	
+	return values;
 }
 
 /** Returns if the given list is full or not
