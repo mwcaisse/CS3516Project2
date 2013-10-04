@@ -161,7 +161,6 @@ B_input(packet)
 			recv_window_inc_seq_num(&b_window);
 			
 			printf("ACK Sent, sending message to application layer \n");
-			printf("Pack %s \n", packet.payload);
 			to_application_layer(&packet);
 			//I NEVER SEND MESSAGE TO APPLICATION?!
 			
