@@ -20,8 +20,8 @@
 /* 4 (students' code).  It contains the data (characters) to be delivered */
 /* to layer 5 via the students transport level protocol entities.         */
 struct msg {
-  char data[20];
-  };
+	char data[20];
+};
 
 
 /* a packet is the data unit passed from layer 4 (students code) to layer */
@@ -41,10 +41,8 @@ struct message_window {
 	int next_seq_num;	//the next sequence number	
 	int max_seq_num; // the highest possible seq number
 	int window_size;	
-	int num_outstanding; //number of unacked packets
-	struct pkt* outstanding_packets[A_WINDOW_SIZE]; //unacked packet buffer
-	int num_buffered_messages; // the number of buffered messages 
-	struct msg buffered_messages[MESSAGE_BUFFER_SIZE]; // the message buffer
+	struct list* buffered_messages;
+	struct list* unacked_packets;
 };	
 
 
@@ -53,6 +51,60 @@ struct receiver_window {
 	struct pkt* last_ack; // pointer to the last ack message sent.	
 	int num_recv; // number of pkts succesfuly rcvd
 };
+
+/** List structure for message and unacked packets window
+*/
+struct list {
+
+	void** values; // pointer to an array of pointers to values
+	
+	int curr_size; // the amount of elements currently in the list
+	int max_size; // the maximum size of the list
+	void** head; // pointer to the current head
+	void** tail; // the pointer to the first free spot in the list.
+	
+};
+
+/** Creates a list with the given size
+	@param size THe size of the list
+	@return pointer to the list
+*/
+
+struct list* create_list(int size);
+
+/** Frees the memory allocated by the list, 
+	does NOT free memory used by list elements
+	@param list Poointer to the list to free
+*/
+
+/** Returns the first element in the list, but leaves it in the list
+*/
+void* peek(struct list* list);
+
+/** Removes the first element in the list, and returns it
+*/
+void* dequeue(struct list* list);
+
+void free_list(struct list* list);
+
+/** Returns the size of the list
+*/
+
+int list_size(struct list* list);
+
+/** Adds the given value of the given list 
+	@param list pointer to the list to add the value to
+	@param value pointer to the value to add
+	@return 1 if successful, 0 if list was full
+*/
+int add_to_list(struct list* list, void* value);
+
+/** Returns if the given list is full or not
+	@param list Pointer to the list
+	@return 1 if full, 0 otherwise
+*/
+
+int list_full(struct list* list);
 
 /** Increments the seq number for the given message window, in this case alternated
 	between 0 and 1
@@ -81,6 +133,10 @@ int generate_checksum(struct pkt* packet);
 */
 
 int check_packet(struct pkt* packet);
+
+/** Sends the given message to B */
+
+void send_message(struct msg* message);
 
 
 /** Creates an ack packet for the given sequence number */
