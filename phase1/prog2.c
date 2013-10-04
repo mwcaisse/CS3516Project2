@@ -36,8 +36,11 @@ int b_recv;
 A_output(message)
   struct msg message;
 {
+
+	printf("A has received a message from application layer, check if we can send it \n");
 	//check if we have any outstanding packets, if we do, we drop the msg
 	if (!a_window.num_outstanding) {
+		printf("We can send it!, creating packet and sending message \n");
 		//no outstanding packets, good to send
 		//lets create the packet for the message
 		struct pkt* packet = (struct pkt*) malloc (sizeof(struct pkt));
@@ -75,19 +78,22 @@ B_output(message)
 A_input(packet)
   struct pkt packet;
 {
-	//printf("A received a packet! \n");
+	printf("A received a packet!, check for corruptness \n");
   //we received a packet!
 	if (check_packet(&packet)) {
+		prtinf("A, Packet was not corrupt!, checking if it is an ack and if we have unacked packets \n");
 		//printf("A rcv'd valie packet  outstanding: %d acknum: %d\n", a_window.num_outstanding, packet.acknum);
 		///check if this is an ack, and if there are outstanding packets
 		if (packet.acknum == ACK_ID && a_window.num_outstanding) {
+		
+			printf("It is an ack, and we do have an outstanding packet! \n");
 		
 			//printf("received ack for %d \n", packet.seqnum);
 			//printf("Packet is an ack \n");
 			//if the packet was an ack,
 			//check if it is an ack for the outstanding packet
 			if (packet.seqnum == a_window.next_seq_num) {
-				printf("Packed is acking outstanding packet \n");
+				printf("Packed is acking outstanding packet, removing it from window \n");
 				//we acked the outstanding packet
 				msg_window_inc_seq_num(&a_window); //increase the sequence number
 				a_window.num_outstanding = 0; // no more outstanding packets
@@ -99,19 +105,23 @@ A_input(packet)
 	}
 	else {
 		//we received a corrupt packet, just ignore it
+		printf("A received a corrupt packet, doing nothing \n");
 	}
 }
 
 /* Interupt for A's timer */
 A_timerinterrupt()
 {
+	printf("A's timer has been interupted, send any unacked packets \n");
 	if (a_window.num_outstanding) {
+		printf("We have an outstanding packet, send it to B \n");
 		tolayer3(*a_window.outstanding_packets[0]);
 		starttimer(A_ID, A_TIMEOUT);
 		//resend the packet when the timer goes off
 	}
 	else {
 		//this shouldn't ever be reached.
+		printf("Someone forgot to turn the timer off -.- \n");
 	}
 }  
 
@@ -130,12 +140,14 @@ A_init()
 B_input(packet)
   struct pkt packet;
 {
-	printf("B recieved a message! \n");
+	printf("B recieved a message!, check if it is valid \n");
 	//check if the packet is valid
 	if (check_packet(&packet)) {
 		//printf("Checksums match! No corruption! \n");
 		//printf("B next seq %d pkt seq %d \n", b_window.expected_seq_num,packet.seqnum);
+		printf("Packet is valid, is it the packet we are looking for? \n");
 		if (b_window.expected_seq_num == packet.seqnum) {
+			printf("It is, lets send out the ack! \n");
 			//we got the packet we were expecting, and it was uncorrupt
 			
 			if (b_window.last_ack != NULL) {
@@ -146,6 +158,8 @@ B_input(packet)
 			tolayer3(B_ID, *ack_pkt);
 			
 			recv_window_inc_seq_num(&b_window);
+			
+			//I NEVER SEND MESSAGE TO APPLICATION?!
 			
 			b_window.num_recv++;
 			printf("B successfully received %d packets \n", b_window.num_recv);
