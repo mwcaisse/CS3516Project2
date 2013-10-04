@@ -185,8 +185,10 @@ B_input(packet)
 			b_window.last_ack = ack_pkt;
 			printf("Sending ACK \n");
 			tolayer3(B_ID, *ack_pkt);
-			
 			recv_window_inc_seq_num(&b_window);
+			
+			printf("We are sending the packet up to application layer \n");
+			to_application_layer(&packet);
 			
 			b_window.num_recv++;
 			printf("B successfully received %d packets \n", b_window.num_recv);
@@ -349,7 +351,7 @@ void send_message(struct msg* message) {
 	packet->seqnum = a_window.next_seq_num; // the next seq num
 	msg_window_inc_seq_num(&a_window);
 	packet->acknum = 0; //no ack status
-	strncpy(packet->payload, message->data, 20); //copy over the data		
+	memcpy(packet->payload, message->data, 20); //copy over the data		
 	//we need to generate a checksum.
 	packet->checksum = generate_checksum(packet);		
 
@@ -362,6 +364,13 @@ void send_message(struct msg* message) {
 		starttimer(A_ID, A_TIMEOUT);	
 	}
 }
+
+void to_application_layer(struct pkt* packet) {
+	struct msg message; // the message to send up
+	strncpy(message.data, packet->payload, 20);
+	tolayer5(B_ID,message); // send the message up
+}
+
 
 /** Creates a list with the given size
 	@param size THe size of the list

@@ -34,7 +34,8 @@ int b_recv;
 
 /* Called from Application layer, sends the given message to node B*/
 A_output(message)
-  struct msg message;
+  struct msg message; 
+
 {
 
 	printf("A has received a message from application layer, check if we can send it \n");
@@ -47,7 +48,7 @@ A_output(message)
 		packet->seqnum = a_window.next_seq_num; // the next seq num
 		packet->acknum = 0; //no ack status
 		//we need to generate a checksum.
-		strncpy(packet->payload, message.data, 20); //copy over the data
+		memcpy(packet->payload, message.data, 20); //copy over the data
 		
 		packet->checksum = generate_checksum(packet);
 		
@@ -81,7 +82,7 @@ A_input(packet)
 	printf("A received a packet!, check for corruptness \n");
   //we received a packet!
 	if (check_packet(&packet)) {
-		prtinf("A, Packet was not corrupt!, checking if it is an ack and if we have unacked packets \n");
+		printf("A, Packet was not corrupt!, checking if it is an ack and if we have unacked packets \n");
 		//printf("A rcv'd valie packet  outstanding: %d acknum: %d\n", a_window.num_outstanding, packet.acknum);
 		///check if this is an ack, and if there are outstanding packets
 		if (packet.acknum == ACK_ID && a_window.num_outstanding) {
@@ -159,12 +160,16 @@ B_input(packet)
 			
 			recv_window_inc_seq_num(&b_window);
 			
+			printf("ACK Sent, sending message to application layer \n");
+			printf("Pack %s \n", packet.payload);
+			to_application_layer(&packet);
 			//I NEVER SEND MESSAGE TO APPLICATION?!
 			
 			b_window.num_recv++;
 			printf("B successfully received %d packets \n", b_window.num_recv);
 		}
 		else {
+			printf("This was not the packet we are looking for, resend old ack \n");
 			//printf("Resending ack! \n");
 			tolayer3(B_ID, *(b_window.last_ack));
 		}
@@ -235,6 +240,12 @@ struct pkt* create_ack(int seq_num) {
 	packet->acknum = ACK_ID;
 	packet->checksum = generate_checksum(packet);
 	return packet;	
+}
+
+void to_application_layer(struct pkt* packet) {
+	struct msg message; // the message to send up
+	strncpy(message.data, packet->payload, 20);
+	tolayer5(B_ID,message); // send the message up
 }
 
 

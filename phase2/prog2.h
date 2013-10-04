@@ -143,6 +143,11 @@ int check_packet(struct pkt* packet);
 
 void send_message(struct msg* message);
 
+/** Sends the given packet to the application layer
+*/
+
+void to_application_layer(struct pkt* packet);
+
 
 /** Creates an ack packet for the given sequence number */
 struct pkt* create_ack(int seq_num);
